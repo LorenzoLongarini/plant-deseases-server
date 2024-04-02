@@ -1,8 +1,9 @@
-from langchain_community.document_loaders.pdf import PyPDFLoader
+# from langchain_community.document_loaders.pdf import PyPDFLoader #, UnstructuredMarkdownLoader
+from langchain_community.document_loaders import UnstructuredMarkdownLoader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_community.vectorstores import Chroma
 from langchain.chains.question_answering import load_qa_chain
-
+import markdown
 from langchain.chat_models import ChatOpenAI
 from langchain_openai import OpenAIEmbeddings
 
@@ -32,9 +33,11 @@ def init(use_ollama = True):
 
     if not os.path.exists(persist_directory):
         print('Creation of NEW db')
-        pdf_url = "https://drive.google.com/uc?id=1ihoa-Db-PytLVvTHDfIFmBF6FZJpsoXi"
+        # pdf_url = "https://drive.google.com/uc?id=1ihoa-Db-PytLVvTHDfIFmBF6FZJpsoXi"
+        readme = "./README_bitBattle.md"
 
-        loader = PyPDFLoader(pdf_url, extract_images=True)
+        loader = UnstructuredMarkdownLoader(readme)
+        # PyPDFLoader(pdf_url, extract_images=True)
         pages = loader.load()
         docs = split_docs(pages)
 
@@ -55,6 +58,6 @@ def init(use_ollama = True):
 
 
 def do_query(vectordb, chain, query):
-    matching_docs = vectordb.similarity_search(query, k=10)
+    matching_docs = vectordb.similarity_search(query, k=8)
     answer = chain.run(input_documents=matching_docs, question=query)
     return matching_docs, answer

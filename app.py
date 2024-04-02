@@ -18,27 +18,7 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
 ma = Marshmallow(app)
 
-
-class TodoItem(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(100))
-    is_executed = db.Column(db.Boolean)
-
-    def __init__(self, name, is_executed):
-        self.name = name
-        self.is_executed = is_executed
-
-
-# Todo schema
-class TodoSchema(ma.Schema):
-    class Meta:
-        fields = ('id', 'name', 'is_executed')
-
-
-# Initialize schema
-todo_schema = TodoSchema()
-todos_schema = TodoSchema(many=True)
-
+db_path = './db.sqlite'
 
 class LlmItem(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -59,54 +39,24 @@ llm_schema = LlmSchema()
 llms_schema = LlmSchema(many=True)
 
 
-
-@app.route('/todo', methods=['POST'])
-def add_todo():
-    name = request.json['name']
-    is_executed = request.json['is_executed']
-
-    new_todo_item = TodoItem(name, is_executed)
-    db.session.add(new_todo_item)
+@app.route('/llm/<id>', methods=['DELETE'])
+def delete_answer(id):
+    answer_to_delete = LlmItem.query.get(id)
+    db.session.delete(answer_to_delete)
     db.session.commit()
 
-    return todo_schema.jsonify(new_todo_item)
-
-
-@app.route('/todo', methods=['GET'])
-def get_todos():
-    all_todos = TodoItem.query.all()
-    result = todos_schema.dump(all_todos)
-
-    return jsonify(result)
-
-
-@app.route('/todo/<id>', methods=['PUT', 'PATCH'])
-def execute_todo(id):
-    todo = TodoItem.query.get(id)
-
-    todo.is_executed = not todo.is_executed
-    db.session.commit()
-
-    return todo_schema.jsonify(todo)
-
-
-@app.route('/todo/<id>', methods=['DELETE'])
-def delete_todo(id):
-    todo_to_delete = TodoItem.query.get(id)
-    db.session.delete(todo_to_delete)
-    db.session.commit()
-
-    return todo_schema.jsonify(todo_to_delete)
+    return llm_schema.jsonify(answer_to_delete)
 
 @app.route('/llm', methods=['POST'])
 def add_question():
-    query = "Scrivi qualcosa di divertente"
+    query = request.json['query']
+    # query = "Tell me in 30 words what is bitbattle."
     context, answer = do_query(vectordb, chain, query)
     new_llm_item = LlmItem(answer)
     db.session.add(new_llm_item)
     db.session.commit()
 
-    return todo_schema.jsonify(new_llm_item)
+    return llm_schema.jsonify(new_llm_item)
 
 
 @app.route('/llm', methods=['GET'])
@@ -116,10 +66,11 @@ def get_questions():
 
     return jsonify(result)
 
-# if __name__ == '__main__':
-#     app.run(host="localhost", port=8000, debug=True)
-
 if __name__ == '__main__':
+    if not os.path.exists(db_path):
+        with app.app_context():
+            db.create_all()
+
     vectordb, chain = init()
 
     # app.run(debug=True)
