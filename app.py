@@ -1,7 +1,10 @@
-from flask import Flask, request, jsonify
+from flask import  Flask, request, jsonify
+from utils import init, do_query
 from flask_sqlalchemy import SQLAlchemy
 from flask_marshmallow import Marshmallow
 import os
+vectordb, chain = init()
+
 
 app = Flask(__name__)
 basedir = os.path.abspath(os.path.dirname(__file__))
@@ -14,6 +17,7 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db = SQLAlchemy(app)
 ma = Marshmallow(app)
+
 
 class TodoItem(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -34,6 +38,27 @@ class TodoSchema(ma.Schema):
 # Initialize schema
 todo_schema = TodoSchema()
 todos_schema = TodoSchema(many=True)
+
+
+class LlmItem(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    answer = db.Column(db.String(100))
+
+    def __init__(self, answer):
+        self.answer = answer
+
+
+# Todo schema
+class LlmSchema(ma.Schema):
+    class Meta:
+        fields = ('id', 'answer')
+
+
+# Initialize schema
+llm_schema = LlmSchema()
+llms_schema = LlmSchema(many=True)
+
+
 
 @app.route('/todo', methods=['POST'])
 def add_todo():
@@ -73,5 +98,29 @@ def delete_todo(id):
 
     return todo_schema.jsonify(todo_to_delete)
 
+@app.route('/llm', methods=['POST'])
+def add_question():
+    query = "Scrivi qualcosa di divertente"
+    context, answer = do_query(vectordb, chain, query)
+    new_llm_item = LlmItem(answer)
+    db.session.add(new_llm_item)
+    db.session.commit()
+
+    return todo_schema.jsonify(new_llm_item)
+
+
+@app.route('/llm', methods=['GET'])
+def get_questions():
+    all_llms = LlmItem.query.all()
+    result = llms_schema.dump(all_llms)
+
+    return jsonify(result)
+
+# if __name__ == '__main__':
+#     app.run(host="localhost", port=8000, debug=True)
+
 if __name__ == '__main__':
-    app.run(debug=True)
+    vectordb, chain = init()
+
+    # app.run(debug=True)
+    app.run(host="localhost", port=8080, debug=True)
