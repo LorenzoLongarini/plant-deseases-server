@@ -58,6 +58,6 @@ def init(use_ollama = True):
 
 
 def do_query(vectordb, chain, query):
-    matching_docs = vectordb.similarity_search(query, k=8)
+    matching_docs = vectordb.similarity_search(query, k=3)
     answer = chain.run(input_documents=matching_docs, question=query)
     return matching_docs, answer

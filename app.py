@@ -47,10 +47,14 @@ def delete_answer(id):
 
     return llm_schema.jsonify(answer_to_delete)
 
+@app.route('/', methods=['GET'])
+def hello_world():
+    return 'hello'
+
 @app.route('/llm', methods=['POST'])
 def add_question():
     query = request.json['query']
-    # query = "Tell me in 30 words what is bitbattle."
+    # query = "Tell me in 10 words what is bitbattle."
     context, answer = do_query(vectordb, chain, query)
     new_llm_item = LlmItem(answer)
     db.session.add(new_llm_item)
@@ -61,8 +65,8 @@ def add_question():
 
 @app.route('/llm', methods=['GET'])
 def get_questions():
-    all_llms = LlmItem.query.all()
-    result = llms_schema.dump(all_llms)
+    all_llms = LlmItem.query.order_by(LlmItem.id.desc()).first()
+    result = llm_schema.dump(all_llms)
 
     return jsonify(result)
 
@@ -74,4 +78,4 @@ if __name__ == '__main__':
     vectordb, chain = init()
 
     # app.run(debug=True)
-    app.run(host="localhost", port=8080, debug=True)
+    app.run(host="localhost", port=8000, debug=True)
